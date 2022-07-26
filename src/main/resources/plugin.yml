@@ -1,0 +1,11 @@
+name: PacMan
+version: '${project.version}'
+main: de.minecraft.plugin.spigot.PacMan
+authors: [ thprinkleth, lonybone ]
+description: PacMan in Minecraft
+
+commands:
+  gm:
+  setup:
+  start:
+  stats:
