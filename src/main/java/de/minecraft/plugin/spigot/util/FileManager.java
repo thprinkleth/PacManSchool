@@ -50,7 +50,7 @@ public class FileManager {
         return string;
     }
 
-    public String getValue(String path, Player player) {
+    public String getValue(String path, Player player, Object... args) {
 
         String string = getValue(path);
 
@@ -66,23 +66,9 @@ public class FileManager {
         string = string.replace("{PlayerName}", String.valueOf(player.getDisplayName()));
         string = string.replace("{MaxPlayers}", String.valueOf(Bukkit.getServer().getMaxPlayers()));
 
-        return string;
-    }
-
-    public String getValue(String path, Player player, int numberToReplace) {
-
-        String string = getValue(path, player);
-
-        string = string.replace("{Number}", String.valueOf(numberToReplace));
-
-        return string;
-    }
-
-    public String getValue(String path, Player player, String stringToReplace) {
-
-        String string = getValue(path, player);
-
-        string = string.replace("{String}", stringToReplace);
+        for (int i = 0; i < args.length; i++) {
+            string = string.replace("{args[" + i + "]}", args[i].toString());
+        }
 
         return string;
     }
@@ -125,6 +111,10 @@ public class FileManager {
         String world = (String) fileConfig.get(path + ".world");
 
         return new Location(Bukkit.getWorld(world), x, y, z, Float.valueOf(String.valueOf(yaw)), Float.valueOf(String.valueOf(pitch)));
+    }
+
+    public boolean getBooleanValue(String path) {
+        return fileConfig.getBoolean(path);
     }
 
     public void saveFile() {

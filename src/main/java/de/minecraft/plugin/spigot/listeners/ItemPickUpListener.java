@@ -20,7 +20,8 @@ public class ItemPickUpListener implements Listener {
 
     private final PacMan INSTANCE = PacMan.getInstance();
 
-    private int repeatingTask;
+    private BossBar bossbar;
+    private int schedulerTask;
 
     @EventHandler
     public void onItemPickup(PlayerPickupItemEvent event) {
@@ -28,6 +29,10 @@ public class ItemPickUpListener implements Listener {
         Player player = event.getPlayer();
 
         event.setCancelled(true);
+
+        if (INSTANCE.getSetupPlayerList().contains(player)) {
+            event.setCancelled(false);
+        }
 
         if (INSTANCE.getRoleHandler().getPlayerRoles().isEmpty()) {
             return;
@@ -45,98 +50,150 @@ public class ItemPickUpListener implements Listener {
 
         if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().coinItemStack().getType()) {
 
-            INSTANCE.getScoreHandler().addScore(INSTANCE.getPowerUpHandler().getPowerUpList()[4]);
-
-            if (INSTANCE.getScoreHandler().getScore() % INSTANCE.getConfigFile().getIntValue("Game.Amount.Locations.Coins") == 0) {
-
-                if (INSTANCE.getPowerUpHandler().getLevel() == 3) {
-
-                    INSTANCE.getGameStateManager().setCurrent(GameState.POSTGAME_STATE);
-
-                    for (Player current : INSTANCE.getPlayerList()) {
-
-                        if (INSTANCE.getRoleHandler().getPlayerRoles().get(current).equalsIgnoreCase("PacMan")) {
-
-                            INSTANCE.getMySQL().addWinsPacMan(current);
-                            current.sendTitle(INSTANCE.getMessageFile().getValue("Game.Finish.Win.PacMan.Title", current), INSTANCE.getMessageFile().getValue("Game.Finish.Win.PacMan.SubTitle", current));
-                            current.playSound(current.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
-
-                        } else {
-
-                            INSTANCE.getMySQL().addLosesGhost(current);
-                            current.sendTitle(INSTANCE.getMessageFile().getValue("Game.Finish.Lose.Ghost.Title", current), INSTANCE.getMessageFile().getValue("Game.Finish.Lose.Ghost.SubTitle", current));
-                            current.playSound(current.getLocation(), Sound.ENTITY_ENDERDRAGON_DEATH, 1, 1);
-                        }
-                    }
-                    return;
-                }
-
-                INSTANCE.getPowerUpHandler().addLevel();
-                INSTANCE.getGameStateManager().setCurrent(GameState.INGAME_STATE);
-            }
-
-            for (Player current : INSTANCE.getPlayerList()) {
-
-                float progress = ((float) INSTANCE.getScoreHandler().getScore() % (float) INSTANCE.getConfigFile().getIntValue("Game.Amount.Locations.Coins")) / (float) INSTANCE.getConfigFile().getIntValue("Game.Amount.Locations.Coins");
-
-                player.setLevel(INSTANCE.getPowerUpHandler().getLevel());
-                current.setExp(progress);
-            }
-            INSTANCE.getCoinDotHandler().deleteCoinDot(item.getLocation());
+            handleCoin(player, event);
 
         } else if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().invincibilityPowerUpItemStack().getType()) {
 
-            activatePowerUp(0, false);
-            INSTANCE.getPowerUpDotHandler().deleteDotOnMap(item.getLocation());
+            handleInvincibilityPowerUp(event);
 
         } else if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().eatingGhostPowerUpItemStack().getType()) {
 
-            activatePowerUp(1, false);
-            INSTANCE.getPowerUpDotHandler().deleteDotOnMap(item.getLocation());
+            handleEatingGhostPowerUp(event);
 
         } else if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().speedPowerUpItemStack().getType()) {
 
-            activatePowerUp(2, false);
-
-            int amplifier = 2;
-
-            if (player.hasPotionEffect(PotionEffectType.SPEED)) {
-                amplifier += player.getPotionEffect(PotionEffectType.SPEED).getAmplifier();
-            }
-
-            player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, INSTANCE.getPowerUpHandler().getDuration(false), amplifier));
-            INSTANCE.getPowerUpDotHandler().deleteDotOnMap(item.getLocation());
+            handleSpeedPowerUp(player, event);
 
         } else if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().freezeGhostPowerUpItemStack().getType()) {
 
-            activatePowerUp(3, false);
-
-            for (Player current : INSTANCE.getPlayerList()) {
-
-                if (INSTANCE.getRoleHandler().getPlayerRoles().get(current).equalsIgnoreCase("Ghost")) {
-                    current.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, INSTANCE.getPowerUpHandler().getDuration(false), 200));
-                    current.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, INSTANCE.getPowerUpHandler().getDuration(false), 200));
-                }
-            }
-
-            INSTANCE.getPowerUpDotHandler().deleteDotOnMap(item.getLocation());
+            handleFreezeGhostPowerUp(player, event);
 
         } else if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().doubleScorePowerUpItemStack().getType()) {
 
-            activatePowerUp(4, true);
-            INSTANCE.getPowerUpDotHandler().deleteDotOnMap(item.getLocation());
+            handleDoubleScorePowerUp(event);
 
         } else if (item.getItemStack().getType() == INSTANCE.getPickupableItemStacks().extraLifePowerUpItemStack().getType()) {
 
-            if (player.getHealth() < player.getMaxHealth()) {
-                player.setHealth(player.getHealth() + 2);
-            }
-            INSTANCE.getPowerUpDotHandler().deleteDotOnMap(item.getLocation());
+            handleExtraLifePowerUp(player, event);
         }
 
         player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 1, 1);
         event.getItem().remove();
     }
+
+    private void handleCoin(Player player, PlayerPickupItemEvent event) {
+
+        INSTANCE.getScoreHandler().addScore(INSTANCE.getPowerUpHandler().getPowerUpList()[4]);
+
+        if (INSTANCE.getScoreHandler().getScore() % INSTANCE.getConfigFile().getIntValue("Game.Amount.Locations.Coins") == 0) {
+
+            if (INSTANCE.getPowerUpHandler().getLevel() == 3) {
+
+                INSTANCE.getGameStateManager().setCurrent(GameState.POSTGAME_STATE);
+
+                for (Player current : INSTANCE.getPlayerList()) {
+
+                    if (INSTANCE.getRoleHandler().getPlayerRoles().get(current).equalsIgnoreCase("PacMan")) {
+
+                        INSTANCE.getMySQL().addWinsPacMan(current);
+                        current.sendTitle(INSTANCE.getMessageFile().getValue("Game.Finish.Win.PacMan.Title", current), INSTANCE.getMessageFile().getValue("Game.Finish.Win.PacMan.SubTitle", current));
+                        current.playSound(current.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1, 1);
+
+                    } else {
+
+                        INSTANCE.getMySQL().addLosesGhost(current);
+                        current.sendTitle(INSTANCE.getMessageFile().getValue("Game.Finish.Lose.Ghost.Title", current), INSTANCE.getMessageFile().getValue("Game.Finish.Lose.Ghost.SubTitle", current));
+                        current.playSound(current.getLocation(), Sound.ENTITY_ENDERDRAGON_DEATH, 1, 1);
+                    }
+                }
+                return;
+            }
+
+            INSTANCE.getPowerUpHandler().addLevel();
+            INSTANCE.getGameStateManager().setCurrent(GameState.INGAME_STATE);
+        }
+
+        for (Player current : INSTANCE.getPlayerList()) {
+
+            float progress = ((float) INSTANCE.getScoreHandler().getScore() % (float) INSTANCE.getConfigFile().getIntValue("Game.Amount.Locations.Coins")) / (float) INSTANCE.getConfigFile().getIntValue("Game.Amount.Locations.Coins");
+
+            player.setLevel(INSTANCE.getPowerUpHandler().getLevel());
+            current.setExp(progress);
+        }
+        INSTANCE.getCoinDotHandler().deleteCoinDot(event.getItem().getLocation());
+    }
+
+
+    private void handleInvincibilityPowerUp(PlayerPickupItemEvent event) {
+
+        BossBar bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
+
+        activatePowerUp(0, false);
+        INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
+    }
+
+
+    private void handleEatingGhostPowerUp(PlayerPickupItemEvent event) {
+
+        BossBar bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
+
+        activatePowerUp(1, false);
+        INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
+    }
+
+    private void handleSpeedPowerUp(Player player, PlayerPickupItemEvent event) {
+
+        bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
+
+        activatePowerUp(2, false);
+        INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
+    }
+
+    public void handleFreezeGhostPowerUp(Player player, PlayerPickupItemEvent event) {
+
+        bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
+
+        activatePowerUp(3, false);
+
+        for (Player current : INSTANCE.getPlayerList()) {
+
+            if (INSTANCE.getRoleHandler().getPlayerRoles().get(current).equalsIgnoreCase("Ghost")) {
+                current.setWalkSpeed(0.0F);
+                current.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, INSTANCE.getPowerUpHandler().getDuration(false), 200));
+            }
+        }
+
+        Bukkit.getScheduler().runTaskLater(INSTANCE, () -> {
+
+            for (Player current : INSTANCE.getPlayerList()) {
+                current.setWalkSpeed(0.2f); // TODO: No speed in game, just walk speed values -> ScoreHandler?
+            }
+        }, INSTANCE.getPowerUpHandler().getDuration(false));
+
+
+
+        INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
+    }
+
+
+    private void handleDoubleScorePowerUp(PlayerPickupItemEvent event) {
+
+        bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
+
+        activatePowerUp(4, true);
+        INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
+    }
+
+
+    public void handleExtraLifePowerUp(Player player, PlayerPickupItemEvent event) {
+
+        if (player.getHealth() + 2 <= player.getMaxHealth()) {
+            player.setHealth(player.getHealth() + 2);
+        }
+
+        INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
+    }
+
 
     private void activatePowerUp(int id, boolean doubleScore) {
 
@@ -145,5 +202,42 @@ public class ItemPickUpListener implements Listener {
         Bukkit.getScheduler().runTaskLaterAsynchronously(INSTANCE, () -> {
             INSTANCE.getPowerUpHandler().deactivatePowerUp(id);
         }, INSTANCE.getPowerUpHandler().getDuration(doubleScore));
+
+        powerUpCooldown(id, doubleScore);
+    }
+
+    private void powerUpCooldown(int id, boolean doubleScore) {
+
+        float maxDuration = INSTANCE.getPowerUpHandler().getDuration(doubleScore);
+
+        Bukkit.getScheduler().cancelTask(schedulerTask);
+        setBossBar(bossbar);
+
+        schedulerTask = Bukkit.getScheduler().scheduleAsyncRepeatingTask(INSTANCE, new Runnable() {
+
+            float current = 0;
+
+            @Override
+            public void run() {
+
+                String name = "Game.PowerUp.BossBar." + INSTANCE.getPowerUpHandler().getPowerUpHashMap().get(id);
+
+                float process = Math.abs((1 - (current / maxDuration)));
+                bossbar.setProgress(process);
+                current += maxDuration / (maxDuration / 1);
+
+                if (current >= maxDuration - 1 || !INSTANCE.getPowerUpHandler().getPowerUpList()[id]) {
+                    bossbar.removeAll();
+                    Bukkit.getScheduler().cancelTask(schedulerTask);
+                }
+            }
+        }, 0, 1);
+
+    }
+
+    private void setBossBar(BossBar bossbar) {
+        for (Player current : Bukkit.getOnlinePlayers()) {
+            bossbar.addPlayer(current);
+        }
     }
 }

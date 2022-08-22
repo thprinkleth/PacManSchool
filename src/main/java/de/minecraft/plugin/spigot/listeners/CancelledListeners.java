@@ -1,5 +1,6 @@
 package de.minecraft.plugin.spigot.listeners;
 
+import de.minecraft.plugin.spigot.PacMan;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -15,10 +16,15 @@ import org.bukkit.event.weather.WeatherChangeEvent;
 
 public class CancelledListeners implements Listener {
 
+    private final PacMan INSTANCE = PacMan.getInstance();
+
     @EventHandler
     public void onBreak(BlockBreakEvent event) {
         if (!event.getPlayer().isOp()) {
             event.setCancelled(true);
+        }
+        if (INSTANCE.getSetupPlayerList().contains(event.getPlayer())) {
+            event.setCancelled(false);
         }
     }
 
@@ -27,12 +33,18 @@ public class CancelledListeners implements Listener {
         if (!event.getPlayer().isOp()) {
             event.setCancelled(true);
         }
+        if (INSTANCE.getSetupPlayerList().contains(event.getPlayer())) {
+            event.setCancelled(false);
+        }
     }
 
     @EventHandler
     public void onDrop(PlayerDropItemEvent event) {
         if (!event.getPlayer().isOp()) {
             event.setCancelled(true);
+        }
+        if (INSTANCE.getSetupPlayerList().contains(event.getPlayer())) {
+            event.setCancelled(false);
         }
     }
 
@@ -49,6 +61,9 @@ public class CancelledListeners implements Listener {
     @EventHandler
     public void onVehicleDamage(VehicleDamageEvent event) {
         event.setCancelled(true);
+        if (INSTANCE.getSetupPlayerList().contains(event.getAttacker())) {
+            event.setCancelled(false);
+        }
     }
 
     @EventHandler

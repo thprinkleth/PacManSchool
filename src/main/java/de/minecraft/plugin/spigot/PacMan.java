@@ -1,13 +1,11 @@
 package de.minecraft.plugin.spigot;
 
-import de.minecraft.plugin.spigot.cmds.CmdGm;
-import de.minecraft.plugin.spigot.cmds.CmdSetup;
-import de.minecraft.plugin.spigot.cmds.CmdStart;
-import de.minecraft.plugin.spigot.cmds.CmdStats;
+import de.minecraft.plugin.spigot.cmds.*;
 import de.minecraft.plugin.spigot.gamestate.GameState;
 import de.minecraft.plugin.spigot.gamestate.GameStateManager;
 import de.minecraft.plugin.spigot.listeners.*;
 import de.minecraft.plugin.spigot.minimap.CoinDotHandler;
+import de.minecraft.plugin.spigot.minimap.GhostDotHandler;
 import de.minecraft.plugin.spigot.minimap.PowerUpDotHandler;
 import de.minecraft.plugin.spigot.powerup.PickupableItemStacks;
 import de.minecraft.plugin.spigot.powerup.PowerUpHandler;
@@ -18,6 +16,7 @@ import de.minecraft.plugin.spigot.util.ItemBuilder;
 import de.minecraft.plugin.spigot.util.MySQL;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -31,14 +30,9 @@ public class PacMan extends JavaPlugin {
 
     /**
      * TODO:
-     * - Ranking command
-     * - Game breakup on disconnect
-     * - PlayerMoveListener migrated into GhostDotHandler
      * - Rework replacement params
-     * - Fix ghost dot handler
      * - Rework game state design (when to start, when to end, etc.)
-     * - PowerUp timer
-     * - Smoother transitions between GameStates/overall teleports
+     * - Smoother transitions between GameStates/overall teleports (Effects, Sounds, Particles)
      * - Feedback when PacMan got hit by a ghost and vice versa
      * - Automatic game start
      */
@@ -58,30 +52,26 @@ public class PacMan extends JavaPlugin {
     private ScoreHandler scoreHandler;
     private CoinDotHandler coinDotHandler;
     private PowerUpDotHandler powerUpDotHandler;
+    private GhostDotHandler ghostDotHandler;
 
     private ArrayList <Player> playerList;
     private ArrayList <Player> setupPlayerList;
 
     private Inventory setupInventory;
 
-
     @Override
     public void onEnable() {
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.kickPlayer("");
-        }
 
         instance = this;
 
         messageFile = new FileManager("messages.yml");
         locationFile = new FileManager("locations.yml");
         configFile = new FileManager("config.yml");
-        mySqlFile = new FileManager("MySQL.yml");
-        mySQL = new MySQL();
+        mySqlFile = new FileManager("mysql.yml");
 
         defaultFileSetup();
 
+        mySQL = new MySQL();
 
         roleHandler = new RoleHandler();
         playerList = new ArrayList<>();
@@ -93,6 +83,7 @@ public class PacMan extends JavaPlugin {
         powerUpHandler = new PowerUpHandler();
         coinDotHandler = new CoinDotHandler();
         powerUpDotHandler = new PowerUpDotHandler();
+        ghostDotHandler = new GhostDotHandler();
 
         gameStateManager.setCurrent(GameState.PREGAME_STATE);
 
@@ -108,6 +99,12 @@ public class PacMan extends JavaPlugin {
     public void onDisable() {
 
         mySQL.disconnect();
+
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.kickPlayer("Server closing.");
+        }
+
         Bukkit.getConsoleSender().sendMessage(messageFile.getValue("Server.ShutDown.Message"));
     }
 
@@ -116,6 +113,7 @@ public class PacMan extends JavaPlugin {
         getCommand("start").setExecutor(new CmdStart());
         getCommand("stats").setExecutor(new CmdStats());
         getCommand("gm").setExecutor(new CmdGm());
+        getCommand("ranking").setExecutor(new CmdRanking());
     }
 
     private void registerListeners() {
@@ -135,117 +133,127 @@ public class PacMan extends JavaPlugin {
 
     private void defaultFileSetup() {
 
-        messageFile.getFileConfig().options().copyDefaults(true);
-        messageFile.getFileConfig().options().header("All strings contained in the plugin.");
+        FileConfiguration mySqlConfig = mySqlFile.getFileConfig();
+        FileConfiguration configConfig = configFile.getFileConfig();
+        FileConfiguration messageConfig = messageFile.getFileConfig();
 
-        mySqlFile.getFileConfig().addDefault("Login.Username", "sql8505251");
-        mySqlFile.getFileConfig().addDefault("Login.Port", 3306);
-        mySqlFile.getFileConfig().addDefault("Login.Database", "sql8505251");
-        mySqlFile.getFileConfig().addDefault("Login.Host", "sql8.freemysqlhosting.net");
-        mySqlFile.getFileConfig().addDefault("Login.Password", "iKETWBjSd6");
+        mySqlConfig.options().header("MySQL-Database connection.");
+        messageConfig.options().header("All strings contained in the plugin.");
+        configConfig.options().header("All changeable values for the behaviour of the game.");
 
-        messageFile.getFileConfig().addDefault("Server.Prefix", "&bPacMan &7|");
+        addDefault(mySqlConfig, "MySQL.Enabled", "false");
+        addDefault(mySqlConfig, "MySQL.Username", "sql11509406");
+        addDefault(mySqlConfig, "MySQL.Port", 3306);
+        addDefault(mySqlConfig, "MySQL.Database", "sql11509406");
+        addDefault(mySqlConfig, "MySQL.Host", "sql11.freemysqlhosting.net");
+        addDefault(mySqlConfig, "MySQL.Password", "1ww5RG1tnM");
 
-        messageFile.getFileConfig().addDefault("MySQL.Connect.Wait", "{Prefix} &6Connecting with MySQL-Database...");
-        messageFile.getFileConfig().addDefault("MySQL.Connect.Success", "{Prefix} &aConnection with MySQL-Database established.");
-        messageFile.getFileConfig().addDefault("MySQL.Disconnect.Success", "{Prefix} &cConnection with MySQL-Database aborted.");
+        addDefault(messageConfig, "Server.Prefix", "&bPacMan &7|");
 
-        messageFile.getFileConfig().addDefault("Server.StartUp.Message", "{Prefix} &aPlugin started.");
-        messageFile.getFileConfig().addDefault("Server.ShutDown.Message", "{Prefix} &cPlugin stopped.");
+        addDefault(messageConfig, "MySQL.Connect.Wait", "{Prefix} &6Connecting with MySQL-Database...");
+        addDefault(messageConfig, "MySQL.Connect.Success", "{Prefix} &aConnection with MySQL-Database established.");
+        addDefault(messageConfig, "MySQL.Connect.Error", "{Prefix} &cConnection with MySQL-Database failed.");
+        addDefault(messageConfig, "MySQL.Disconnect.Success", "{Prefix} &cConnection with MySQL-Database aborted.");
+        addDefault(messageConfig, "MySQL.Disconnect.Error", "{Prefix} &cConnection with MySQL-Database couldn't be aborted.");
 
-        messageFile.getFileConfig().addDefault("Commands.NoPlayer", "{Prefix} &cThe command can only be performed by a player.");
+        addDefault(messageConfig, "Server.StartUp.Message", "{Prefix} &aPlugin started.");
+        addDefault(messageConfig, "Server.ShutDown.Message", "{Prefix} &cPlugin stopped.");
 
-        messageFile.getFileConfig().addDefault("Commands.Setup.Syntax", "{Prefix} &cSyntax: &6/setup");
-        messageFile.getFileConfig().addDefault("Commands.Start.Syntax", "{Prefix} &cSyntax: &6/start");
-        messageFile.getFileConfig().addDefault("Commands.Ranking.Syntax", "{Prefix} &cSyntax: &6/ranking");
-        messageFile.getFileConfig().addDefault("Commands.Stats.Syntax", "{Prefix} &cSyntax: &6/stats <playername>");
-        messageFile.getFileConfig().addDefault("Commands.Gm.Syntax", "{Prefix} &cSyntax: &6/gm <0-3>");
+        addDefault(messageConfig, "Commands.NoPlayer", "{Prefix} &cThe command can only be performed by a player.");
 
-        messageFile.getFileConfig().addDefault("Commands.Gm.Exec.Survival", "{Prefix} &aYou switched to Survival-Mode&a.");
-        messageFile.getFileConfig().addDefault("Commands.Gm.Exec.Creative", "{Prefix} &aYou switched to Creative-Mode&a.");
-        messageFile.getFileConfig().addDefault("Commands.Gm.Exec.Adventure", "{Prefix} &aYou switched to Adventure-Mode&a.");
-        messageFile.getFileConfig().addDefault("Commands.Gm.Exec.Spectator", "{Prefix} &aYou switched to Spectator-Mode&a.");
-        messageFile.getFileConfig().addDefault("Commands.Gm.Exec.Error", "{Prefix} &cAn error occurred while trying to change the gamemode.");
+        addDefault(messageConfig, "Commands.Setup.Syntax", "{Prefix} &cSyntax: &6/setup");
+        addDefault(messageConfig, "Commands.Start.Syntax", "{Prefix} &cSyntax: &6/start");
+        addDefault(messageConfig, "Commands.Ranking.Syntax", "{Prefix} &cSyntax: &6/ranking");
+        addDefault(messageConfig, "Commands.Stats.Syntax", "{Prefix} &cSyntax: &6/stats <playername>");
+        addDefault(messageConfig, "Commands.Gm.Syntax", "{Prefix} &cSyntax: &6/gm <0-3>");
 
-        messageFile.getFileConfig().addDefault("Commands.Setup.Exec.Activated", "{Prefix} &aYou got the item for the setup.");
-        messageFile.getFileConfig().addDefault("Commands.Setup.Exec.Deactivated", "{Prefix} &cYou lost the item for the setup.");
+        addDefault(messageConfig, "Commands.Gm.Exec.Survival", "{Prefix} &aYou switched to Survival-Mode&a.");
+        addDefault(messageConfig, "Commands.Gm.Exec.Creative", "{Prefix} &aYou switched to Creative-Mode&a.");
+        addDefault(messageConfig, "Commands.Gm.Exec.Adventure", "{Prefix} &aYou switched to Adventure-Mode&a.");
+        addDefault(messageConfig, "Commands.Gm.Exec.Spectator", "{Prefix} &aYou switched to Spectator-Mode&a.");
+        addDefault(messageConfig, "Commands.Gm.Exec.Error", "{Prefix} &cAn error occurred while trying to change the gamemode.");
 
-        messageFile.getFileConfig().addDefault("Commands.Stats.PlayerNotFound", "{Prefix} &aThe player &6{String} &awas not found.");
+        addDefault(messageConfig, "Commands.Setup.Exec.Activated", "{Prefix} &aYou got the item for the setup.");
+        addDefault(messageConfig, "Commands.Setup.Exec.Deactivated", "{Prefix} &cYou lost the item for the setup.");
 
-        messageFile.getFileConfig().addDefault("Commands.NoPerm", "{Prefix} &cYou don't have the permission to perform this command.");
+        addDefault(messageConfig, "Commands.Stats.PlayerNotFound", "{Prefix} &aThe player &6{args[0]} &awas not found.");
 
-        messageFile.getFileConfig().addDefault("World.Join", "{Prefix} &6{PlayerName} &ajoined the server. &7({ServerPlayers}/&8{MaxPlayers}&7)");
-        messageFile.getFileConfig().addDefault("World.Quit", "{Prefix} &6{PlayerName} &cleft the server. &7({Number}/&8{MaxPlayers}&7)");
+        addDefault(messageConfig, "Commands.NoPerm", "{Prefix} &cYou don't have the permission to perform this command.");
 
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.Lobby.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6lobby&a.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.Lobby.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for the &6lobby&c.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.Ghosts.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6ghosts&a.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.Ghosts.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for the &6ghost&c.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.PacMan.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6PacMan&a.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.PacMan.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for &6PacMan&c.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.Coin.Success", "{Prefix} &aA position for a coin has been set. &7({Number])");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.Coin.NotSuccess", "{Prefix} &cAn error occurred while trying to set a position for a coin.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.AutoCoin.Success", "{Prefix} &6{Number} &apositions have been set for a coin position.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.PowerUp.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6PowerUp&a.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.PowerUp.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for the &6PowerUp&c.");
+        addDefault(messageConfig, "World.Join", "{Prefix} &6{PlayerName} &ajoined the server. &7({ServerPlayers}/&8{MaxPlayers}&7)");
+        addDefault(messageConfig, "World.Quit", "{Prefix} &6{PlayerName} &cleft the server. &7({args[0]}/&8{MaxPlayers}&7)");
 
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.AutoCoin.FirstLocation", "{Prefix} &aSuccessfully set the &6first location &afor &6AutoCoin&a.");
-        messageFile.getFileConfig().addDefault("Setup.Spawn.Set.AutoCoin.SecondLocation", "{Prefix} &aSuccessfully set the &6second location &afor &6AutoCoin&a. &8Calculating...");
+        addDefault(messageConfig, "Setup.Spawn.Set.Lobby.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6lobby&a.");
+        addDefault(messageConfig, "Setup.Spawn.Set.Lobby.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for the &6lobby&c.");
+        addDefault(messageConfig, "Setup.Spawn.Set.Ghosts.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6ghosts&a.");
+        addDefault(messageConfig, "Setup.Spawn.Set.Ghosts.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for the &6ghost&c.");
+        addDefault(messageConfig, "Setup.Spawn.Set.PacMan.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6PacMan&a.");
+        addDefault(messageConfig, "Setup.Spawn.Set.PacMan.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for &6PacMan&c.");
+        addDefault(messageConfig, "Setup.Spawn.Set.Coin.Success", "{Prefix} &aA position for a coin has been set. &7({args[0])");
+        addDefault(messageConfig, "Setup.Spawn.Set.Coin.NotSuccess", "{Prefix} &cAn error occurred while trying to set a position for a coin.");
+        addDefault(messageConfig, "Setup.Spawn.Set.AutoCoin.Success", "{Prefix} &6{args[0]} &apositions have been set for a coin position.");
+        addDefault(messageConfig, "Setup.Spawn.Set.PowerUp.Success", "{Prefix} &aSuccessfully set the spawnpoint for the &6PowerUp&a.");
+        addDefault(messageConfig, "Setup.Spawn.Set.PowerUp.NotSuccess", "{Prefix} &cAn error occurred while trying to set the spawnpoint for the &6PowerUp&c.");
 
-        messageFile.getFileConfig().addDefault("Lobby.Countdown.Counting", "{Prefix} &aThe game will start in &6{Number}&a seconds.");
-        messageFile.getFileConfig().addDefault("Lobby.Countdown.Starting", "{Prefix} &aThe game starts now.");
-        messageFile.getFileConfig().addDefault("Lobby.Countdown.NotEnoughLocations", "{Prefix} &cDu musst alle Positionen setzten bevor das Spiel gestartet werden kann.");
-        messageFile.getFileConfig().addDefault("Lobby.Countdown.NotEnoughPlayers", "{Prefix} &cEs müssen &6{PlayersNeededToStart} Spieler &cin der Lobby sein, um das Spiel zu starten.");
+        addDefault(messageConfig, "Setup.Spawn.Set.AutoCoin.FirstLocation", "{Prefix} &aSuccessfully set the &6first location &afor &6AutoCoin&a.");
+        addDefault(messageConfig, "Setup.Spawn.Set.AutoCoin.SecondLocation", "{Prefix} &aSuccessfully set the &6second location &afor &6AutoCoin&a. &8Calculating...");
 
-        messageFile.getFileConfig().addDefault("Game.NextLevel.PacMan.Title", "&aDu hast das nächste Level erreicht.");
-        messageFile.getFileConfig().addDefault("Game.NextLevel.PacMan.SubTitle", "&7Neues Level: &6{Number}");
-        messageFile.getFileConfig().addDefault("Game.NextLevel.Ghost.Title", "&cPacMan hat das nächste Level erreicht.");
-        messageFile.getFileConfig().addDefault("Game.NextLevel.Ghost.SubTitle", "&7Neues Level: &6{Number}");
+        addDefault(messageConfig, "Lobby.Countdown.Counting", "{Prefix} &aThe game will start in &6{args[0]}&a seconds.");
+        addDefault(messageConfig, "Lobby.Countdown.Starting", "{Prefix} &aThe game starts now.");
+        addDefault(messageConfig, "Lobby.Countdown.NotEnoughLocations", "{Prefix} &cYou must set all positions in order to start the game.");
+        addDefault(messageConfig, "Lobby.Countdown.NotEnoughPlayers", "{Prefix} &cThere must be &6{PlayersNeededToStart} §cplayers online in order to start the game..");
 
-        messageFile.getFileConfig().addDefault("Game.Finish.Win.PacMan.Title", "&aDu hast als &6PacMan &agewonnen!");
-        messageFile.getFileConfig().addDefault("Game.Finish.Win.PacMan.SubTitle", "&7Herzlichen Glückwunsch!!");
-        messageFile.getFileConfig().addDefault("Game.Finish.Lose.PacMan.Title", "&cDu hast als &6PacMan &cverloren!");
-        messageFile.getFileConfig().addDefault("Game.Finish.Lose.PacMan.SubTitle", "&7Viel Glück nächstes Mal.");
-        messageFile.getFileConfig().addDefault("Game.Finish.Win.Ghost.Title", "&aDu hast als &6Geist &agewonnen!");
-        messageFile.getFileConfig().addDefault("Game.Finish.Win.Ghost.SubTitle", "&7Herzlichen Glückwunsch!!");
-        messageFile.getFileConfig().addDefault("Game.Finish.Lose.Ghost.Title", "&cDu hast als &6Geist &cverloren!");
-        messageFile.getFileConfig().addDefault("Game.Finish.Lose.Ghost.SubTitle", "&7Viel Glück nächstes Mal.");
+        addDefault(messageConfig, "Game.NextLevel.PacMan.Title", "&aYou reached the next Level!");
+        addDefault(messageConfig, "Game.NextLevel.PacMan.SubTitle", "&7New Level: &6{args[0]}");
+        addDefault(messageConfig, "Game.NextLevel.Ghost.Title", "&cPacMan reached the next level.");
+        addDefault(messageConfig, "Game.NextLevel.Ghost.SubTitle", "&7New Level: &6{args[0]}");
 
-        messageFile.getFileConfig().addDefault("Game.Score.PacMan", "&aDein Score: &6{Number}");
-        messageFile.getFileConfig().addDefault("Game.Score.Ghost", "&bScore von PacMan: &6{Number}");
+        addDefault(messageConfig, "Game.Finish.Win.PacMan.Title", "&aYou won as &6PacMan&a!");
+        addDefault(messageConfig, "Game.Finish.Win.PacMan.SubTitle", "&7Congratulations!");
+        addDefault(messageConfig, "Game.Finish.Lose.PacMan.Title", "&cYou lost as &6PacMan&c!");
+        addDefault(messageConfig, "Game.Finish.Lose.PacMan.SubTitle", "&7Better luck next time!");
+        addDefault(messageConfig, "Game.Finish.Win.Ghost.Title", "&aYou won as a &6Ghost&a!");
+        addDefault(messageConfig, "Game.Finish.Win.Ghost.SubTitle", "&7Congratulations!");
+        addDefault(messageConfig, "Game.Finish.Lose.Ghost.Title", "&cYou lost as a &6Ghost&c!");
+        addDefault(messageConfig, "Game.Finish.Lose.Ghost.SubTitle", "&7Better luck next time!");
 
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Name", "&aSetup-Inventar");
+        addDefault(messageConfig, "Game.Ghost.Eaten.Title", "&cYou have been eaten by a Ghost!");
+        addDefault(messageConfig, "Game.Ghost.Eaten.SubTitle", "&7You've been send back to spawn");
 
-        configFile.getFileConfig().addDefault("Game.Amount.Locations.Coins", 0);
-        configFile.getFileConfig().addDefault("Game.Amount.Locations.PowerUps", 0);
-        configFile.getFileConfig().addDefault("Game.PlayersNeededToStart", 1);
-        configFile.getFileConfig().addDefault("Game.Countdown.Value", 5);
+        addDefault(messageConfig, "Game.Score.PacMan", "&aYour score: &6{args[0]}");
+        addDefault(messageConfig, "Game.Score.Ghost", "&bScore of PacMan: &6{args[0]}");
 
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.LobbySpawn.Name", "&bLobby-Spawnpunkt");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.LobbySpawn.Lore", "&7Setze die Position, wo die Spieler vor und nach dem Spiel erscheinen sollen.");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.GhostSpawn.Name", "&bGhost-Spawnpunkt");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.GhostSpawn.Lore", "&7Setze die Position, wo die Geister in dem Spiel erscheinen sollen.");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.PacManSpawn.Name", "&bPacMan-Spawnpunkt");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.PacManSpawn.Lore", "&7Setze die Position, wo PacMan in dem Spiel erscheinen soll.");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.PowerUpSpawn.Name", "&bPowerUp-Spawnpunkt");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.PowerUpSpawn.Lore", "&7Setze die Position, wo ein PowerUp liegen soll.");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.CoinSpawn.Name", "&bCoin-Spawnpunkt");
-        configFile.getFileConfig().addDefault("Inventory.SetupInventory.Items.CoinSpawn.Lore", "&7Setze die Position, wo ein Coin liegen soll.");
+        addDefault(configConfig, "Inventory.SetupInventory.Name", "&aSetup-Inventory");
 
-        configFile.getFileConfig().addDefault("Items.Setup.Name", "&bSetupItem");
-        configFile.getFileConfig().addDefault("Items.Setup.Lore", "&7Rechtsklick auf einen Block um das Location-Inventar zu öffnen.");
-        configFile.getFileConfig().addDefault("Items.SetupCoin.Name", "&bSetupCoins");
-        configFile.getFileConfig().addDefault("Items.SetupCoin.Lore", "&7Rechtsklick auf einen Block um einen Coin zu setzen.");
+        addDefault(configConfig, "Game.Amount.Locations.Coins", 0);
+        addDefault(configConfig, "Game.Amount.Locations.PowerUps", 0);
+        addDefault(configConfig, "Game.PlayersNeededToStart", 1);
+        addDefault(configConfig, "Game.Countdown.Value", 5);
 
-        configFile.getFileConfig().addDefault("Inventory.StatsInventory.Self.Name", "&7Stats von &8dir");
-        configFile.getFileConfig().addDefault("Inventory.StatsInventory.Other.Name", "&7Stats von &8{String}");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.LobbySpawn.Name", "&bLobby-Spawnpoint");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.LobbySpawn.Lore", "&7Sets the position where the players will spawn before and after the game.");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.GhostSpawn.Name", "&bGhost-SpawnPoint");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.GhostSpawn.Lore", "&7Sets the position where the ghosts will spawn.");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.PacManSpawn.Name", "&bPacMan-Spawnpoint");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.PacManSpawn.Lore", "&7Sets the position where the PacMan will spawn.");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.PowerUpSpawn.Name", "&bPowerUp-Spawnpoint");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.PowerUpSpawn.Lore", "&7Sets the position where a PowerUp will spawn.");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.CoinSpawn.Name", "&bCoin-Spawnpoint");
+        addDefault(configConfig, "Inventory.SetupInventory.Items.CoinSpawn.Lore", "&7Sets the position where a Coin will spawn.");
+
+        addDefault(configConfig, "Items.Setup.Name", "&bSetupItem");
+        addDefault(configConfig, "Items.Setup.Lore", "&6Rightclick on a block to open the setup-inventory.");
+        addDefault(configConfig, "Items.SetupCoin.Name", "&bSetupCoins");
+        addDefault(configConfig, "Items.SetupCoin.Lore", "&7Rightclick on a block to set the location for a coin.");
+
+        addDefault(configConfig, "Inventory.StatsInventory.Self.Name", "&7Your &8stats");
+        addDefault(configConfig, "Inventory.StatsInventory.Other.Name", "&8{args[0]}'s &7stats");
 
         try {
-            messageFile.getFileConfig().save(messageFile.getFile());
-            configFile.getFileConfig().save(configFile.getFile());
-            mySqlFile.getFileConfig().save(mySqlFile.getFile());
+            messageConfig.save(messageFile.getFile());
+            configConfig.save(configFile.getFile());
+            mySqlConfig.save(mySqlFile.getFile());
         } catch (IOException e) {
-            throw new RuntimeException(e);
         }
 
     }
@@ -280,82 +288,75 @@ public class PacMan extends JavaPlugin {
         setupInventory.setItem(14, coinSpawnItemStack);
     }
 
+    private void addDefault(FileConfiguration config, String path, Object value) {
+
+        if (config == null) return;
+        if (path == null) return;
+        if (value == null) return;
+
+        if (!config.contains(path)) {
+            config.set(path, value);
+        }
+    }
+
     public static PacMan getInstance() {
         return instance;
     }
-
     public FileManager getMessageFile() {
         return messageFile;
     }
-
     public FileManager getLocationFile() {
         return locationFile;
     }
-
     public Inventory getSetupInventory() {
         return setupInventory;
     }
-
     public RoleHandler getRoleHandler() {
         return roleHandler;
     }
-
     public ArrayList<Player> getPlayerList() {
         return playerList;
     }
-
-    public void addToPlayerList(Player player) {
-        playerList.add(player);
-    }
-
     public void removeFromPlayerList(Player player) {
         playerList.remove(player);
     }
-
     public GameStateManager getGameStateManager() {
         return gameStateManager;
     }
-
     public PickupableItemStacks getPickupableItemStacks() {
         return pickupableItemStacks;
     }
-
     public MySQL getMySQL() {
         return mySQL;
     }
-
     public PowerUpHandler getPowerUpHandler() {
         return powerUpHandler;
     }
-
     public ScoreHandler getScoreHandler() {
         return scoreHandler;
     }
     public CoinDotHandler getCoinDotHandler() {
         return coinDotHandler;
     }
-
     public PowerUpDotHandler getPowerUpDotHandler() {
         return powerUpDotHandler;
     }
-
     public FileManager getConfigFile() {
         return configFile;
     }
-
     public FileManager getMySqlFile() {
         return mySqlFile;
     }
-
     public ArrayList<Player> getSetupPlayerList() {
         return setupPlayerList;
     }
-
     public void addToSetupPlayerList(Player player) {
         setupPlayerList.add(player);
     }
-
     public void removeFromSetupPlayerList(Player player) {
         setupPlayerList.remove(player);
+    }
+    public GhostDotHandler getGhostDotHandler() {
+        return ghostDotHandler;
     }
 }

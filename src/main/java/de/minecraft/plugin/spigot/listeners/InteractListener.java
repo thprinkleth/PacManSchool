@@ -70,7 +70,6 @@ public class InteractListener implements Listener {
                             }
 
                             INSTANCE.getLocationFile().setLocation("Game.Location.Coin." + amountCoinLocations, posFloor);
-
                             amountCoinLocations++;
                             amountLocationSet++;
                         }

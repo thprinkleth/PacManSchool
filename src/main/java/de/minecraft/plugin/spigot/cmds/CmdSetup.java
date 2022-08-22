@@ -40,7 +40,7 @@ public class CmdSetup implements CommandExecutor {
         }
 
         if (INSTANCE.getSetupPlayerList().contains(player)) {
-            player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Setup.AlreadySetup", player));
+            player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Setup.Exec.Deactivated", player));
             return true;
         }
 
@@ -58,7 +58,7 @@ public class CmdSetup implements CommandExecutor {
         INSTANCE.addToSetupPlayerList(player);
         player.performCommand("gm 1");
 
-        player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Setup.Exec", player));
+        player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Setup.Exec.Activated", player));
 
         return false;
     }

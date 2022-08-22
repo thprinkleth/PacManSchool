@@ -18,6 +18,10 @@ public class InventoryClickListener implements Listener {
 
         event.setCancelled(true);
 
+        if (INSTANCE.getSetupPlayerList().contains(player)) {
+            event.setCancelled(false);
+        }
+
         try {
 
             if (event.getClickedInventory().getName().equalsIgnoreCase(INSTANCE.getSetupInventory().getName())) {

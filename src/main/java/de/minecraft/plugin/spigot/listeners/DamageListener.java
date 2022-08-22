@@ -84,7 +84,9 @@ public class DamageListener implements Listener {
             }
 
             player.teleport(INSTANCE.getLocationFile().getSpawn("Game.Location." + INSTANCE.getRoleHandler().getPlayerRoles().get(player)));
-            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, INSTANCE.getPowerUpHandler().getDuration(false), 200));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 2 * 20, 200));
+            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 2 * 20, 200));
+            player.sendTitle(INSTANCE.getMessageFile().getValue("Game.Ghost.Eaten.Title", player), INSTANCE.getMessageFile().getValue("Game.Ghost.Eaten.SubTitle", player));
         }
     }
 }

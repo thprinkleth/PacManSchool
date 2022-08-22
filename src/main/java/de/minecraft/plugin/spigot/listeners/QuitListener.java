@@ -22,6 +22,7 @@ public class QuitListener implements Listener {
         event.setQuitMessage(INSTANCE.getMessageFile().getValue("World.Quit", player, INSTANCE.getPlayerList().size() - 1));
 
         INSTANCE.removeFromPlayerList(player);
+
         if (INSTANCE.getSetupPlayerList().contains(player)) {
             INSTANCE.removeFromSetupPlayerList(player);
         }
@@ -31,11 +32,9 @@ public class QuitListener implements Listener {
             INSTANCE.getMySQL().addLosesGhost(player);
             INSTANCE.getMySQL().addLosesPacMan(player);
 
-            for (Player current : Bukkit.getOnlinePlayers()) {
-                if (current != player) {
-                    INSTANCE.getMySQL().addWinsGhost(current);
-                    INSTANCE.getMySQL().addWinsPacMan(current);
-                }
+            for (Player current : INSTANCE.getPlayerList()) {
+                INSTANCE.getMySQL().addWinsGhost(current);
+                INSTANCE.getMySQL().addWinsPacMan(current);
             }
 
             INSTANCE.getGameStateManager().setCurrent(GameState.POSTGAME_STATE);

@@ -46,6 +46,11 @@ public class PostGameState extends GameState {
 
     @Override
     public void stop() {
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.kickPlayer("Server rebooting...");
+        }
+
         INSTANCE.getGameStateManager().setCurrent(GameState.PREGAME_STATE);
     }
 }

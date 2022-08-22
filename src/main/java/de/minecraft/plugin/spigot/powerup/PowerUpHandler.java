@@ -7,6 +7,7 @@ import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -42,9 +43,7 @@ public class PowerUpHandler {
     }
 
     public void deactivatePowerUps() {
-        for (int i = 0; i < powerUpList.length; i++) {
-            powerUpList[i] = false;
-        }
+        Arrays.fill(powerUpList, false);
     }
 
     public void deactivatePowerUp(int id) {
@@ -65,6 +64,9 @@ public class PowerUpHandler {
     }
 
     public int getMaxLifes() {
+
+        // ((1 - maxLifes) / maxLevel) * x + maxLifes
+
         if (level == 0 || level == 1) {
             return 6;
         } else if (level == 2) {
@@ -72,6 +74,7 @@ public class PowerUpHandler {
         } else if (level == 3) {
             return 2;
         }
+
         return -1;
     }
 
