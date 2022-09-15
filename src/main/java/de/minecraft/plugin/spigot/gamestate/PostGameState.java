@@ -29,6 +29,7 @@ public class PostGameState extends GameState {
 
             for (PotionEffect potion : player.getActivePotionEffects()) {
                 player.removePotionEffect(potion.getType());
+                player.setGlowing(false);
             }
 
             player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 3 * 20, 200));

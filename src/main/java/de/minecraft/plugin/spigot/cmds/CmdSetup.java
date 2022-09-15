@@ -56,7 +56,7 @@ public class CmdSetup implements CommandExecutor {
         player.getInventory().setItem(0, setupItem);
         player.getInventory().setItem(1, autoCoinSetup);
         INSTANCE.addToSetupPlayerList(player);
-        player.performCommand("gm 1");
+        player.performCommand("gamemode creative");
 
         player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Setup.Exec.Activated", player));
 

@@ -71,10 +71,7 @@ public class DamageListener implements Listener {
                 player.setHealth(player.getHealth() - 2);
 
                 for (Player current : INSTANCE.getPlayerList()) {
-
-                    current.teleport(INSTANCE.getLocationFile().getSpawn("Game.Location." + INSTANCE.getRoleHandler().getPlayerRoles().get(current)));
-                    current.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 2 * 20, 200));
-                    current.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 2 * 20, 200));
+                    INSTANCE.getTeleportHandler().resetPlayer(current);
                 }
             }
         } else if (roleDamager.equalsIgnoreCase("PacMan")) {
@@ -83,9 +80,7 @@ public class DamageListener implements Listener {
                 return;
             }
 
-            player.teleport(INSTANCE.getLocationFile().getSpawn("Game.Location." + INSTANCE.getRoleHandler().getPlayerRoles().get(player)));
-            player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 2 * 20, 200));
-            player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 2 * 20, 200));
+            INSTANCE.getTeleportHandler().resetPlayer(player);
             player.sendTitle(INSTANCE.getMessageFile().getValue("Game.Ghost.Eaten.Title", player), INSTANCE.getMessageFile().getValue("Game.Ghost.Eaten.SubTitle", player));
         }
     }

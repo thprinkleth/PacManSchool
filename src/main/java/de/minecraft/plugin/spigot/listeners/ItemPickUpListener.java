@@ -5,6 +5,7 @@ import de.minecraft.plugin.spigot.gamestate.GameState;
 import de.minecraft.plugin.spigot.gamestate.IngameState;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
+import org.bukkit.Statistic;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -123,35 +124,23 @@ public class ItemPickUpListener implements Listener {
         INSTANCE.getCoinDotHandler().deleteCoinDot(event.getItem().getLocation());
     }
 
-
     private void handleInvincibilityPowerUp(PlayerPickupItemEvent event) {
-
-        BossBar bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
-
         activatePowerUp(0, false);
         INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
     }
 
 
     private void handleEatingGhostPowerUp(PlayerPickupItemEvent event) {
-
-        BossBar bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
-
         activatePowerUp(1, false);
         INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
     }
 
     private void handleSpeedPowerUp(Player player, PlayerPickupItemEvent event) {
-
-        bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
-
         activatePowerUp(2, false);
         INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
     }
 
     public void handleFreezeGhostPowerUp(Player player, PlayerPickupItemEvent event) {
-
-        bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
 
         activatePowerUp(3, false);
 
@@ -177,9 +166,6 @@ public class ItemPickUpListener implements Listener {
 
 
     private void handleDoubleScorePowerUp(PlayerPickupItemEvent event) {
-
-        bossbar = Bukkit.getServer().createBossBar("test", BarColor.BLUE, BarStyle.SEGMENTED_20);
-
         activatePowerUp(4, true);
         INSTANCE.getPowerUpDotHandler().deleteDotOnMap(event.getItem().getLocation());
     }
@@ -202,42 +188,5 @@ public class ItemPickUpListener implements Listener {
         Bukkit.getScheduler().runTaskLaterAsynchronously(INSTANCE, () -> {
             INSTANCE.getPowerUpHandler().deactivatePowerUp(id);
         }, INSTANCE.getPowerUpHandler().getDuration(doubleScore));
-
-        powerUpCooldown(id, doubleScore);
-    }
-
-    private void powerUpCooldown(int id, boolean doubleScore) {
-
-        float maxDuration = INSTANCE.getPowerUpHandler().getDuration(doubleScore);
-
-        Bukkit.getScheduler().cancelTask(schedulerTask);
-        setBossBar(bossbar);
-
-        schedulerTask = Bukkit.getScheduler().scheduleAsyncRepeatingTask(INSTANCE, new Runnable() {
-
-            float current = 0;
-
-            @Override
-            public void run() {
-
-                String name = "Game.PowerUp.BossBar." + INSTANCE.getPowerUpHandler().getPowerUpHashMap().get(id);
-
-                float process = Math.abs((1 - (current / maxDuration)));
-                bossbar.setProgress(process);
-                current += maxDuration / (maxDuration / 1);
-
-                if (current >= maxDuration - 1 || !INSTANCE.getPowerUpHandler().getPowerUpList()[id]) {
-                    bossbar.removeAll();
-                    Bukkit.getScheduler().cancelTask(schedulerTask);
-                }
-            }
-        }, 0, 1);
-
-    }
-
-    private void setBossBar(BossBar bossbar) {
-        for (Player current : Bukkit.getOnlinePlayers()) {
-            bossbar.addPlayer(current);
-        }
     }
 }

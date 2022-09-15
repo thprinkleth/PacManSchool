@@ -53,6 +53,7 @@ public class PowerUpHandler {
     public void activatePowerUp(int id) {
         deactivatePowerUps();
         powerUpList[id] = true;
+        INSTANCE.getBossBarHandler().resetProgress();
     }
 
     public int getDuration(boolean doubleScore) {
@@ -129,5 +130,18 @@ public class PowerUpHandler {
 
     public void resetPowerUpHashMap() {
         powerUpHashMap.clear();
+    }
+
+    public int getCurrentPowerUp() {
+        int current = -1;
+        for (int i = 0; i < powerUpList.length; i++) {
+            if (powerUpList[i])
+                current = i;
+        }
+        return current;
+    }
+
+    public boolean isDoubleScore() {
+        return powerUpList[4];
     }
 }

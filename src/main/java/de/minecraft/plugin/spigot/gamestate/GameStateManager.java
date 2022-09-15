@@ -30,6 +30,7 @@ public class GameStateManager {
         stopCurrent();
         current = GAME_STATES[id];
         current.start();
+        INSTANCE.getTeleportHandler().gameInitTeleports();
     }
 
     public boolean canGameStart() {

@@ -1,6 +1,7 @@
 package de.minecraft.plugin.spigot.gamestate;
 
 import de.minecraft.plugin.spigot.PacMan;
+import de.minecraft.plugin.spigot.powerup.BossBarHandler;
 import de.minecraft.plugin.spigot.util.BlockSetter;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -72,14 +73,13 @@ public class IngameState extends GameState {
 
                 if (!INSTANCE.getRoleHandler().getPlayerRoles().containsKey(player)) {
                     INSTANCE.getRoleHandler().getPlayerRoles().put(player, "Ghost");
+                    player.setGlowing(true);
                 }
 
                 Bukkit.getScheduler().runTask(INSTANCE, () -> {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, Integer.MAX_VALUE, 251));
                     player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, Integer.MAX_VALUE, 1));
                 });
-
-                player.teleport(INSTANCE.getLocationFile().getSpawn("Game.Location." + INSTANCE.getRoleHandler().getPlayerRoles().get(player)));
 
                 INSTANCE.getMySQL().addGame(player);
 
@@ -100,6 +100,8 @@ public class IngameState extends GameState {
                         }
                     }
                 }, 0, 5);
+
+                INSTANCE.setBossBarHandler(new BossBarHandler());
             }
         } else {
 
@@ -115,24 +117,13 @@ public class IngameState extends GameState {
                     player.removePotionEffect(potion.getType());
                 }
 
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW, 3 * 20, 200));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 3 * 20, 200));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.JUMP, Integer.MAX_VALUE, 251));
                 player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, Integer.MAX_VALUE, 1));
-                player.addPotionEffect(new PotionEffect(PotionEffectType.SPEED, Integer.MAX_VALUE, INSTANCE.getPowerUpHandler().getLevel()));
 
                 if (INSTANCE.getRoleHandler().getPlayerRoles().get(player).equalsIgnoreCase("PacMan")) {
                     player.setHealthScale(INSTANCE.getPowerUpHandler().getMaxLifes());
                     player.setMaxHealth(INSTANCE.getPowerUpHandler().getMaxLifes());
                 }
-
-                player.teleport(INSTANCE.getLocationFile().getSpawn("Game.Location." + INSTANCE.getRoleHandler().getPlayerRoles().get(player)));
-
-                /**
-                 * TODO:
-                 * - next round
-                 * -
-                 */
             }
         }
     }

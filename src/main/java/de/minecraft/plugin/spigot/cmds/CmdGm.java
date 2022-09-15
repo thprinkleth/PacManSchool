@@ -37,11 +37,6 @@ public class CmdGm implements CommandExecutor {
 
         int gm = Integer.parseInt(args[0]);
 
-        if (gm < 0 || gm > 3) {
-            player.sendMessage("§cSyntax: /gm <0-3>");
-            return true;
-        }
-
         switch (gm) {
 
             case 0:
@@ -61,7 +56,7 @@ public class CmdGm implements CommandExecutor {
                 player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Gm.Exec.Spectator", player));
                 break;
             default:
-                player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Gm.Exec.Error", player));
+                player.sendMessage(INSTANCE.getMessageFile().getValue("Commands.Gm.Syntax", player));
                 break;
         }
 

@@ -7,6 +7,7 @@ import de.minecraft.plugin.spigot.listeners.*;
 import de.minecraft.plugin.spigot.minimap.CoinDotHandler;
 import de.minecraft.plugin.spigot.minimap.GhostDotHandler;
 import de.minecraft.plugin.spigot.minimap.PowerUpDotHandler;
+import de.minecraft.plugin.spigot.powerup.BossBarHandler;
 import de.minecraft.plugin.spigot.powerup.PickupableItemStacks;
 import de.minecraft.plugin.spigot.powerup.PowerUpHandler;
 import de.minecraft.plugin.spigot.role.RoleHandler;
@@ -14,6 +15,7 @@ import de.minecraft.plugin.spigot.score.ScoreHandler;
 import de.minecraft.plugin.spigot.util.FileManager;
 import de.minecraft.plugin.spigot.util.ItemBuilder;
 import de.minecraft.plugin.spigot.util.MySQL;
+import de.minecraft.plugin.spigot.util.TeleportHandler;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -32,9 +34,10 @@ public class PacMan extends JavaPlugin {
      * TODO:
      * - Rework replacement params
      * - Rework game state design (when to start, when to end, etc.)
-     * - Smoother transitions between GameStates/overall teleports (Effects, Sounds, Particles)
+     * - Smoother transitions between GameStates/overall teleports (Sounds, Particles)
      * - Feedback when PacMan got hit by a ghost and vice versa
      * - Automatic game start
+     * - Bugfix Bossbar doesn't disappear when new powerup is picked up
      */
 
     private static PacMan instance;
@@ -53,6 +56,8 @@ public class PacMan extends JavaPlugin {
     private CoinDotHandler coinDotHandler;
     private PowerUpDotHandler powerUpDotHandler;
     private GhostDotHandler ghostDotHandler;
+    private BossBarHandler bossBarHandler;
+    private TeleportHandler teleportHandler;
 
     private ArrayList <Player> playerList;
     private ArrayList <Player> setupPlayerList;
@@ -84,6 +89,7 @@ public class PacMan extends JavaPlugin {
         coinDotHandler = new CoinDotHandler();
         powerUpDotHandler = new PowerUpDotHandler();
         ghostDotHandler = new GhostDotHandler();
+        teleportHandler = new TeleportHandler();
 
         gameStateManager.setCurrent(GameState.PREGAME_STATE);
 
@@ -171,7 +177,6 @@ public class PacMan extends JavaPlugin {
         addDefault(messageConfig, "Commands.Gm.Exec.Creative", "{Prefix} &aYou switched to Creative-Mode&a.");
         addDefault(messageConfig, "Commands.Gm.Exec.Adventure", "{Prefix} &aYou switched to Adventure-Mode&a.");
         addDefault(messageConfig, "Commands.Gm.Exec.Spectator", "{Prefix} &aYou switched to Spectator-Mode&a.");
-        addDefault(messageConfig, "Commands.Gm.Exec.Error", "{Prefix} &cAn error occurred while trying to change the gamemode.");
 
         addDefault(messageConfig, "Commands.Setup.Exec.Activated", "{Prefix} &aYou got the item for the setup.");
         addDefault(messageConfig, "Commands.Setup.Exec.Deactivated", "{Prefix} &cYou lost the item for the setup.");
@@ -358,5 +363,14 @@ public class PacMan extends JavaPlugin {
     }
     public GhostDotHandler getGhostDotHandler() {
         return ghostDotHandler;
+    }
+    public void setBossBarHandler(BossBarHandler bossBarHandler) {
+        this.bossBarHandler = bossBarHandler;
+    }
+    public BossBarHandler getBossBarHandler() {
+        return bossBarHandler;
+    }
+    public TeleportHandler getTeleportHandler() {
+        return teleportHandler;
     }
 }
